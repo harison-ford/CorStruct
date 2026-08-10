@@ -3,9 +3,11 @@
 .env.*
 !.env.example
 
-# Client / internal docs (not source)
+# Client / internal docs 
 document/
 CorStruct-Feasibility-Report.md
+*.json
+*.pdf
 
 # Node / Nest / Next
 node_modules/
