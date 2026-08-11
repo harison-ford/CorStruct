@@ -1,0 +1,3 @@
+# Force Node 22 — Nest 11 / supabase-js need >=20 (Nixpacks defaulted to 18).
+[phases.setup]
+nixPkgs = ["nodejs_22", "npm-9_x"]

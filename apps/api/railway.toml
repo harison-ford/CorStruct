@@ -1,9 +1,13 @@
 # Railway config for NestJS BFF (apps/api)
 # In Railway: set this service Root Directory to apps/api
+#
+# Nixpacks already runs `npm ci` in the install phase. Do NOT run npm ci
+# again in buildCommand — it conflicts with the node_modules/.cache mount
+# and fails with EBUSY.
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "npm run start:prod"

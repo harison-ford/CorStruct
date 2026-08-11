@@ -2,6 +2,9 @@
   "name": "@corstruct/api",
   "version": "0.0.1",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "nest start",
     "start:dev": "nest start --watch",
