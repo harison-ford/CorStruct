@@ -11,9 +11,12 @@ from health import router as health_router
 from redis_client import close_redis, get_redis
 from supabase_client import close_supabase, get_supabase
 
-# Prefer repo root .env, then local
-_root_env = Path(__file__).resolve().parents[2] / ".env"
-load_dotenv(_root_env)
+# Local monorepo: .../CorStruct/apps/ai-services/main.py → parents[2] = repo root.
+# On Railway Root Directory is apps/ai-services, so __file__ is /app/main.py and
+# parents[2] does not exist — skip. Secrets come from Railway Variables.
+_file = Path(__file__).resolve()
+if len(_file.parents) > 2:
+    load_dotenv(_file.parents[2] / ".env")
 load_dotenv()
 
 

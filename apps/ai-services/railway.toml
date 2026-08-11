@@ -1,9 +1,10 @@
 # Railway config for FastAPI AI service (apps/ai-services)
 # In Railway: set this service Root Directory to apps/ai-services
+#
+# Nixpacks installs requirements.txt automatically — don't re-run pip in build.
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
