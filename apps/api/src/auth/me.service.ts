@@ -7,7 +7,9 @@ export class MeService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async getMe(user: CurrentUser) {
-    const { data, error } = await this.supabase.client
+    const db = this.supabase.forUser(user.accessToken);
+
+    const { data, error } = await db
       .from("users")
       .select("id, tenant_id, role, mfa_enabled")
       .eq("id", user.id)
@@ -21,7 +23,7 @@ export class MeService {
     }
 
     if (data.tenant_id) {
-      const { error: auditError } = await this.supabase.client
+      const { error: auditError } = await db
         .from("audit_log")
         .insert({
           tenant_id: data.tenant_id,

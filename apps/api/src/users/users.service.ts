@@ -7,7 +7,9 @@ export class UsersService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async getUsers(user: CurrentUser) {
-    const { data: appUser, error: appUserError } = await this.supabase.client
+    const db = this.supabase.forUser(user.accessToken);
+
+    const { data: appUser, error: appUserError } = await db
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)
@@ -23,7 +25,7 @@ export class UsersService {
       throw new NotFoundException("No tenant linked to this user");
     }
 
-    const { data: users, error: usersError } = await this.supabase.client
+    const { data: users, error: usersError } = await db
       .from("users")
       .select("id, tenant_id, role, mfa_enabled")
       .eq("tenant_id", appUser.tenant_id);

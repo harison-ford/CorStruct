@@ -21,7 +21,9 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException("Missing Bearer token");
     }
 
-    req.user = await this.jwt.verify(header.slice(7));
+    const accessToken = header.slice(7); // "Bearer " is 7 characters, so we're obtaining the token only so we're slicing at 7
+    const identity = await this.jwt.verify(accessToken);
+    req.user = { ...identity, accessToken };
     return true;
   }
 }

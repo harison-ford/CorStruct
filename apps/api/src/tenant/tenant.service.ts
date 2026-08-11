@@ -12,7 +12,11 @@ export class TenantService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async getMyTenant(user: CurrentUser) {
-    const { data: appUser, error: userError } = await this.supabase.client
+    // RLS-scoped: relies on tenants_select policy (id = current_tenant_id()),
+    // not just this .eq() filter.
+    const db = this.supabase.forUser(user.accessToken);
+
+    const { data: appUser, error: userError } = await db
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)
@@ -25,7 +29,7 @@ export class TenantService {
       throw new NotFoundException("No tenant linked to this user");
     }
 
-    const { data: tenant, error: tenantError } = await this.supabase.client
+    const { data: tenant, error: tenantError } = await db
       .from("tenants")
       .select("id, name, created_at")
       .eq("id", appUser.tenant_id)
@@ -41,6 +45,9 @@ export class TenantService {
     return tenant;
   }
 
+  // Bootstrap only — deliberately uses service_role. The caller has no
+  // tenant yet, so no authenticated-role policy grants tenant/user inserts
+  // (see 002_rls_enforce_auth_uid.sql). This is the one privileged path.
   async createTenant(user: CurrentUser, tenantName: string) {
     const name = tenantName.trim();
     if (!name) {

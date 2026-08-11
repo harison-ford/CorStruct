@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { SupabaseService } from "../supabase/supabase.service";
 import type { CurrentUser } from "../auth/current-user";
 
@@ -10,8 +11,11 @@ import type { CurrentUser } from "../auth/current-user";
 export class ProjectsService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  private async requireTenantId(user: CurrentUser): Promise<string> {
-    const { data: appUser, error: appUserError } = await this.supabase.client
+  private async requireTenantId(
+    db: SupabaseClient,
+    user: CurrentUser,
+  ): Promise<string> {
+    const { data: appUser, error: appUserError } = await db
       .from("users")
       .select("tenant_id")
       .eq("id", user.id)
@@ -31,9 +35,10 @@ export class ProjectsService {
   }
 
   async getProjects(user: CurrentUser) {
-    const tenantId = await this.requireTenantId(user);
+    const db = this.supabase.forUser(user.accessToken);
+    const tenantId = await this.requireTenantId(db, user);  // Getting the tenant_id from the user + making sure user exists and has a tenant_id
 
-    const { data: projects, error: projectsError } = await this.supabase.client
+    const { data: projects, error: projectsError } = await db
       .from("projects")
       .select("id, tenant_id, name, created_at")
       .eq("tenant_id", tenantId);
@@ -51,9 +56,10 @@ export class ProjectsService {
       throw new BadRequestException("name is required");
     }
 
-    const tenantId = await this.requireTenantId(user);
+    const db = this.supabase.forUser(user.accessToken);
+    const tenantId = await this.requireTenantId(db, user);
 
-    const { data: project, error: projectError } = await this.supabase.client
+    const { data: project, error: projectError } = await db
       .from("projects")
       .insert({ name, tenant_id: tenantId })
       .select("id, tenant_id, name, created_at")
@@ -66,16 +72,14 @@ export class ProjectsService {
       throw new BadRequestException("Project not created");
     }
 
-    const { error: auditError } = await this.supabase.client
-      .from("audit_log")
-      .insert({
-        tenant_id: tenantId,
-        actor_id: user.id,
-        action: "project.created",
-        target_type: "project",
-        target_id: project.id,
-        metadata: { name: project.name },
-      });
+    const { error: auditError } = await db.from("audit_log").insert({
+      tenant_id: tenantId,
+      actor_id: user.id,
+      action: "project.created",
+      target_type: "project",
+      target_id: project.id,
+      metadata: { name: project.name },
+    });
 
     if (auditError) {
       throw auditError;
