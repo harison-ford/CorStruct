@@ -10,8 +10,9 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = Number(process.env.PORT) || 3001;      // Number() converts .env str to number
-  await app.listen(port);
+  const port = Number(process.env.PORT) || 3001;
+  // Railway proxies to $PORT on 0.0.0.0 — default listen can refuse edge traffic.
+  await app.listen(port, "0.0.0.0");
 }
 
 bootstrap();
