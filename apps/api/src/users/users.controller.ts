@@ -11,7 +11,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { CurrentUser as CurrentUserType } from "../auth/current-user";
 import { UsersService } from "./users.service";
-import { UpdateFinanceDTO, UserDTO } from "./userDTO";
+import { UpdateFinanceDTO, UserDTO } from "./user.dto";
 
 @Controller("users")
 @UseGuards(JwtAuthGuard)

@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import type { CurrentUser } from "../auth/current-user";
-import type { UpdateFinanceDTO, UserDTO } from "./userDTO";
+import type { UpdateFinanceDTO, UserDTO } from "./user.dto";
 
 @Injectable()
 export class UsersService {
