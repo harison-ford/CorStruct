@@ -8,6 +8,7 @@ import { TenantModule } from "./tenant/tenant.module";
 import { UsersModule } from "./users/users.module";
 import { ProjectsModule } from "./projects/projects.module";
 import { TaskModule } from "./task/task.module";
+import { InvoicesModule } from "./invoices/invoices.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -25,6 +26,7 @@ import { TaskModule } from "./task/task.module";
     UsersModule,
     ProjectsModule,
     TaskModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}

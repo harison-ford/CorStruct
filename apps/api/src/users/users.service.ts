@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import type { CurrentUser } from "../auth/current-user";
-import type { UserDTO } from "./userDTO";
+import type { UpdateFinanceDTO, UserDTO } from "./userDTO";
 
 @Injectable()
 export class UsersService {
@@ -123,5 +123,90 @@ export class UsersService {
     }
 
     return { ...assistant, email };
+  }
+
+  async updateFinancialVisibility(
+    user: CurrentUser,
+    targetId: string,
+    dto: UpdateFinanceDTO,
+  ) {
+    if (typeof dto.financial_data_visible !== "boolean") {
+      throw new BadRequestException("financial_data_visible must be a boolean");
+    }
+
+    const id = targetId?.trim() ?? "";
+    if (!id) {
+      throw new BadRequestException("id is required");
+    }
+
+    const db = this.supabase.forUser(user.accessToken);
+
+    const { data: owner, error: ownerError } = await db
+      .from("users")
+      .select("id, tenant_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (ownerError) {
+      throw ownerError;
+    }
+    if (!owner) {
+      throw new NotFoundException("User not found");
+    }
+    if (!owner.tenant_id) {
+      throw new NotFoundException("No tenant linked to this user");
+    }
+    if (owner.role !== "owner") {
+      throw new ForbiddenException(
+        "Only an owner can change financial visibility",
+      );
+    }
+
+    const { data: target, error: targetError } = await db
+      .from("users")
+      .select("id, tenant_id, role, financial_data_visible")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (targetError) {
+      throw targetError;
+    }
+    if (!target || target.tenant_id !== owner.tenant_id) {
+      throw new NotFoundException("User not found in this tenant");
+    }
+    if (target.role !== "assistant") {
+      throw new BadRequestException(
+        "Financial visibility can only be changed for assistants",
+      );
+    }
+
+    const { data: updated, error: updateError } = await db
+      .from("users")
+      .update({ financial_data_visible: dto.financial_data_visible })
+      .eq("id", target.id)
+      .select("id, tenant_id, role, financial_data_visible, mfa_enabled")
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+    if (!updated) {
+      throw new BadRequestException("Financial visibility not updated");
+    }
+
+    const { error: auditError } = await db.from("audit_log").insert({
+      tenant_id: owner.tenant_id,
+      actor_id: user.id,
+      action: "user.financial_visibility.updated",
+      target_type: "user",
+      target_id: updated.id,
+      metadata: { financial_data_visible: updated.financial_data_visible },
+    });
+
+    if (auditError) {
+      throw auditError;
+    }
+
+    return updated;
   }
 }

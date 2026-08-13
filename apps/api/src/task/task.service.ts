@@ -12,6 +12,49 @@ import type { TaskDTO } from "./taskDTO";
 export class TaskService {
   constructor(private readonly supabase: SupabaseService) {}
 
+
+  async getTasks(user: CurrentUser) {
+    const db = this.supabase.forUser(user.accessToken);
+
+    const { data: appUser, error: appUserError } = await db
+      .from("users")
+      .select("id, tenant_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (appUserError) {
+      throw appUserError;
+    }
+    if (!appUser) {
+      throw new NotFoundException("User not found");
+    }
+    if (!appUser.tenant_id) {
+      throw new NotFoundException("No tenant linked to this user");
+    }
+
+    const columns =
+      "id, tenant_id, title, description, status, assignee_id, assigned_by, due_at, created_by, created_at, updated_at";
+
+    let query = db
+      .from("tasks")
+      .select(columns)
+      .eq("tenant_id", appUser.tenant_id);
+
+    if (appUser.role === "assistant") {
+      query = query.eq("assignee_id", appUser.id);
+    } else if (appUser.role !== "owner") {
+      throw new ForbiddenException("Unrecognized role");
+    }
+
+    const { data: tasks, error: tasksError } = await query;
+
+    if (tasksError) {
+      throw tasksError;
+    }
+
+    return tasks ?? [];
+  }
+
   async createTask(user: CurrentUser, dto: TaskDTO) {
     const title = dto.title?.trim() ?? "";
     if (!title) {
