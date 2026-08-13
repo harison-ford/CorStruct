@@ -1,4 +1,4 @@
-// JWT identity only. role here is usually "authenticated", not app RBAC (owner / PM / …).
+// JWT identity only. role here is usually "authenticated", not app RBAC (owner / assistant).
 export type CurrentUser = {
   id: string;
   email: string | null;

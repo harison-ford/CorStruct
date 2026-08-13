@@ -83,7 +83,11 @@ export class TenantService {
     if (appUser) {
       const { error: linkError } = await this.supabase.client
         .from("users")
-        .update({ tenant_id: tenant.id, role: "owner" })
+        .update({
+          tenant_id: tenant.id,
+          role: "owner",
+          financial_data_visible: true,
+        })
         .eq("id", user.id);
 
       if (linkError) {
@@ -96,6 +100,7 @@ export class TenantService {
           id: user.id,
           tenant_id: tenant.id,
           role: "owner",
+          financial_data_visible: true,
           mfa_enabled: false,
         });
 

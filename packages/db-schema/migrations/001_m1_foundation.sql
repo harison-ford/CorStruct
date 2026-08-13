@@ -1,7 +1,11 @@
--- M1 schema v0
+-- M1 schema v0 (aligned with Technical Build Plan v2 — valid through M2 columns).
 -- Login/register stay in auth.users (Supabase Auth). This file is app data only.
 -- One tenant per user for M1. Nest creates the tenant + public.users row after signup.
--- Extra vs PDF example: projects, persons, organizations, pgvector, RLS on all tenant tables.
+--
+-- Roles at launch: owner | assistant only.
+-- Owner is seeded in DB (Auth user + public.users); owner then creates assistants
+-- and grants/revokes financial_data_visible. Doc "admin" maps to owner here.
+-- Apply 002 (auth.uid RLS) then 003 (idempotent upgrades + task/RBAC policies).
 
 -- Required for later RAG / embeddings. No embedding tables in M1.
 create extension if not exists vector;
@@ -10,6 +14,8 @@ create extension if not exists vector;
 create table public.tenants (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  -- M2: when false (default), AI risk/permit flags go to assistant review first.
+  risk_review_bypass boolean not null default false,
   created_at timestamptz default now()
 );
 
@@ -18,16 +24,10 @@ create table public.tenants (
 create table public.users (
   id uuid primary key references auth.users (id),
   tenant_id uuid references public.tenants (id),
-  role text not null check (role in (
-    'owner',
-    'project_manager',
-    'operations',
-    'finance',
-    'field',
-    'admin',
-    'ai_reviewer'
-  )),
-  -- Flag only. MFA is enforced later via Supabase Auth / Google.
+  role text not null check (role in ('owner', 'assistant')),
+  -- Off by default for assistants; owner grants/revokes per user.
+  financial_data_visible boolean not null default false,
+  -- Flag only. MFA for owner can be enforced via Supabase Auth / Nest later.
   mfa_enabled boolean default false
 );
 
@@ -66,6 +66,26 @@ create table public.integration_registry (
   created_at timestamptz default now()
 );
 
+-- M2: owner assigns a task/follow-up to an assistant (human), separate from AI candidates.
+create table public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.tenants (id),
+  title text not null,
+  description text,
+  status text not null default 'open'
+    check (status in ('open', 'in_progress', 'done', 'cancelled')),
+  assignee_id uuid not null references public.users (id),
+  assigned_by uuid not null references public.users (id),
+  due_at timestamptz,
+  created_by text not null default 'human'
+    check (created_by in ('human', 'ai_auto', 'ai_suggested')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index tasks_tenant_id_idx on public.tasks (tenant_id);
+create index tasks_assignee_id_idx on public.tasks (assignee_id);
+
 -- Append-only. Login events and later mutations write here from Nest, not from RLS.
 create table public.audit_log (
   id bigint generated always as identity primary key,
@@ -87,10 +107,11 @@ alter table public.projects enable row level security;
 alter table public.organizations enable row level security;
 alter table public.persons enable row level security;
 alter table public.integration_registry enable row level security;
+alter table public.tasks enable row level security;
 alter table public.audit_log enable row level security;
 
--- Nest sets app.tenant_id per request after JWT verify.
--- service_role bypasses RLS; these policies matter for authenticated / anon clients.
+-- Placeholder policies (GUC). Replaced by 002/003 with auth.uid()-based policies.
+-- Kept so 001 alone still enables RLS without leaving tables wide open.
 create policy tenant_isolation on public.tenants
 using (id = current_setting('app.tenant_id')::uuid);
 
@@ -107,6 +128,9 @@ create policy tenant_isolation on public.persons
 using (tenant_id = current_setting('app.tenant_id')::uuid);
 
 create policy tenant_isolation on public.integration_registry
+using (tenant_id = current_setting('app.tenant_id')::uuid);
+
+create policy tenant_isolation on public.tasks
 using (tenant_id = current_setting('app.tenant_id')::uuid);
 
 create policy tenant_isolation on public.audit_log

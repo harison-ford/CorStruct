@@ -7,6 +7,7 @@ import { SupabaseModule } from "./supabase/supabase.module";
 import { TenantModule } from "./tenant/tenant.module";
 import { UsersModule } from "./users/users.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { TaskModule } from "./task/task.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,7 +23,8 @@ import { ProjectsModule } from "./projects/projects.module";
     AuthModule,
     TenantModule,
     UsersModule,
-    ProjectsModule
+    ProjectsModule,
+    TaskModule,
   ],
 })
 export class AppModule {}
